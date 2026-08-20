@@ -1,5 +1,12 @@
-/** Official Ava server goals — posted while this account is logged in. */
-export const SERVER_GOAL_EMAIL = "root@rootrecord.info";
+/** Official Ava server goals — public poster identity (not a personal human account). */
+export const SERVER_GOAL_EMAIL = "ava@rootrecord.info";
+
+/** Staff who may create/manage Ava server goals while signed in as themselves. */
+export const AVA_OPERATOR_EMAILS = [
+  SERVER_GOAL_EMAIL,
+  "root@rootrecord.info",
+  "rootrecord@outlook.com",
+] as const;
 
 export const USDC_MINT_MAINNET = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 export const USDC_MINT_DEVNET = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU";
@@ -8,8 +15,15 @@ export const USDC_MINT = USDC_MINT_DEVNET;
 
 export const TOKEN_METADATA_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 
+export function isAvaOperatorEmail(email: string): boolean {
+  const e = String(email || "").trim().toLowerCase();
+  return (AVA_OPERATOR_EMAILS as readonly string[]).includes(e);
+}
+
 export function isServerGoalUser(userId: string): boolean {
-  return String(userId || "").trim().toLowerCase() === `user:${SERVER_GOAL_EMAIL}`;
+  const id = String(userId || "").trim().toLowerCase();
+  if (!id.startsWith("user:")) return false;
+  return isAvaOperatorEmail(id.slice(5));
 }
 
 export function emailFromUserId(userId: string): string {

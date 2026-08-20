@@ -280,7 +280,7 @@ OLLAMA_MODEL = os.getenv("AVA_OLLAMA_MODEL", "ava-ivy").strip()
 MC_TEST_DIR = Path(
     _first_env(
         "ROOTMC_TEST_DIR",
-        default="/home/ava-core/ava-old-20260819/workstations/minecraft-test",
+        default="/home/ava-core/ava/workstations/minecraft-test",
     )
 ).expanduser()
 

@@ -8,10 +8,18 @@ import { CARD_FEE_BPS } from "./platform-fees";
 export const AVA_SHARDS_PER_USD = 100;
 export const AVA_VOTE_NUM = 42;
 export const AVA_VOTE_DEN = 100;
-export const SERVER_GOAL_EMAIL = "root@rootrecord.info";
+/** Ava's public Root Record identity (server goals / shard reserve). */
+export const SERVER_GOAL_EMAIL = "ava@rootrecord.info";
+
+/** Staff who may operate Ava server tooling while signed in as themselves. */
+const AVA_OPERATOR_EMAILS = new Set([
+  SERVER_GOAL_EMAIL,
+  "root@rootrecord.info",
+  "rootrecord@outlook.com",
+]);
 
 export function isAvaOperatorEmail(email: string): boolean {
-  return String(email || "").trim().toLowerCase() === SERVER_GOAL_EMAIL;
+  return AVA_OPERATOR_EMAILS.has(String(email || "").trim().toLowerCase());
 }
 
 export type ShardDb = {

@@ -81,8 +81,8 @@ function sanitizeSlugBase(raw: string): string {
 
 function officialPeers(env: TransferMeshEnv): MeshPeer[] {
   const towny = parseAddress(str(env.ROOTMC_TRANSFER_TOWNY) || "play.rootmc.net:25565");
-  const claims = parseAddress(str(env.ROOTMC_TRANSFER_CLAIMS) || "51.81.176.61:24945");
-  const test = parseAddress(str(env.ROOTMC_TRANSFER_TEST) || "147.185.221.21:41654");
+  const claims = parseAddress(str(env.ROOTMC_TRANSFER_CLAIMS) || "play.rootmc.net:25565");
+  const test = parseAddress(str(env.ROOTMC_TRANSFER_TEST) || "play.avaivy.cloud:25565");
   const out: MeshPeer[] = [];
   if (towny) {
     out.push({
@@ -103,18 +103,18 @@ function officialPeers(env: TransferMeshEnv): MeshPeer[] {
       port: claims.port,
       kind: "official",
       online: null,
-      aliases: ["gen2", "c"],
+      aliases: ["gen2", "c", "play"],
     });
   }
   if (test) {
     out.push({
       slug: "test",
-      label: "ROOTMC DEV portal",
+      label: "Ava",
       host: test.host,
       port: test.port,
       kind: "official",
       online: null,
-      aliases: ["dev", "devportal"],
+      aliases: ["dev", "devportal", "ava", "world"],
     });
   }
   return out;

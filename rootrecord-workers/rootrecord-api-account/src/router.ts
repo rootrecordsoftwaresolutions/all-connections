@@ -28,6 +28,7 @@ import { handleBusinessRoutes, handleBusinessAuthEntitlement, bmWipeOwnedRows } 
 import { handleFeedbackRoute } from "./feedback-route";
 import { handlePartnershipSignupRoute } from "./partnership-signup";
 import { handleVisitingHawaiiSponsoredRoutes } from "./visiting-hawaii-sponsored-routes";
+import { handlePublicSitesPath, handleSitesRoutes } from "./sites-routes";
 import { performAccountDeletion } from "./account-deletion";
 import { handleRewardsLedgerV1 } from "./earn-rewards-ledger";
 import { handleEmailMarketingPrefsRoute } from "./email-marketing-prefs";
@@ -120,6 +121,9 @@ export interface Env {
 
   /** Annual Price id for Visiting Hawaiʻi sponsored listings (`price_…`, $100/year). */
   STRIPE_VISITING_HAWAII_SPONSORED_PRICE_ID?: string;
+
+  /** Monthly Price id for Website Hosting ($10/mo). Optional for scaffold / trial-only. */
+  STRIPE_WEBSITE_HOSTING_PRICE_ID?: string;
 
 
   /**
@@ -357,6 +361,9 @@ export async function handleRequest(
 
 
   if (!pathname.startsWith("/api")) {
+
+    const publicSitesRes = await handlePublicSitesPath(request, env, pathname, method);
+    if (publicSitesRes) return publicSitesRes;
 
     if (method === "GET" && (pathname === "/" || pathname === "/health")) {
 
@@ -1493,6 +1500,10 @@ export async function handleRequest(
   const visitingHawaiiSponsoredRes = await handleVisitingHawaiiSponsoredRoutes(request, env, sub, method);
 
   if (visitingHawaiiSponsoredRes) return visitingHawaiiSponsoredRes;
+
+  const sitesRes = await handleSitesRoutes(request, env, sub, method);
+
+  if (sitesRes) return sitesRes;
 
   const businessRes = await handleBusinessRoutes(request, env, sub, method);
 

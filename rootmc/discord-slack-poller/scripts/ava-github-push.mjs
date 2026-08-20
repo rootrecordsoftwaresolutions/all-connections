@@ -1,8 +1,12 @@
 /**
- * Ava GitHub auto-commit + push — end of dig phases only.
+ * Ava GitHub auto-commit + push — end of dig phases only (RootMC workspace paths).
  * Stages Ava-owned workspace paths; never secrets; never force-push main/master.
  *
- * Usage:
+ * OptiPlex multi-repo Ava-Core-Dev sync (ava-core, private, plugins, web-files, `dev`):
+ *   /home/ava-core/ava/ava-core-v2/scripts/ava-github-push.mjs
+ *   docs: ava-core-v2/docs/GITHUB-AUTO-PUSH.md
+ *
+ * Usage (this RootMC dig-phase helper):
  *   node scripts/ava-github-push.mjs ["optional commit message"]
  *   AVA_GIT_ROOT=D:\  node scripts/ava-github-push.mjs
  */

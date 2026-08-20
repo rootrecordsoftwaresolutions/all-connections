@@ -78,7 +78,7 @@ const AVA_CORE =
   process.env.AVA_CORE ||
   [
     path.join(AVA_HOME, "core"),
-    "/home/ava-core/ava-old-20260819/core",
+    "/home/ava-core/ava/workstations/rootmc-scripts",
   ].find((p) => fs.existsSync(path.join(p, "scripts"))) ||
   path.join(AVA_HOME, "core");
 

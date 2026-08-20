@@ -12,7 +12,8 @@
     { key: "data", label: "Data", href: "/data/" },
     { key: "mesh", label: "Mesh", href: "/mesh/" },
     { key: "wiki", label: "Wiki", href: "/wiki/" },
-    { key: "blog", label: "Updates", href: "/blog/" },
+    { key: "blog", label: "Blog", href: "/blog/" },
+    { key: "timeline", label: "Timeline", href: "/timeline/" },
     { key: "thanks", label: "Tokens", href: "/thanks/" },
     { key: "plugins", label: "Plugins", href: "/plugins/" },
     { key: "developers", label: "Developers", href: "/developer/" },
@@ -24,6 +25,7 @@
     { key: "home", label: "Home", href: "/" },
     { key: "data", label: "Data", href: "/data/" },
     { key: "mesh", label: "Mesh", href: "/mesh/" },
+    { key: "blog", label: "Blog", href: "/blog/" },
     { key: "plugins", label: "Plugins", href: "/plugins/" },
     { key: "developers", label: "Developers", href: "/developer/" },
     { key: "wiki", label: "Wiki", href: "/wiki/" },
@@ -35,6 +37,7 @@
     { key: "keys", label: "My Keys", href: "/developer/keys/" },
     { key: "servers", label: "My Servers", href: "/developer/servers/" },
     { key: "plugins", label: "Plugins", href: "/plugins/" },
+    { key: "blog", label: "Blog", href: "/blog/" },
     { key: "players", label: "Players", href: "/" },
     { key: "login", label: "Sign in", href: "/developer/login/", guest: true },
     { key: "register", label: "Register", href: "/developer/register/", cta: true, guest: true },
@@ -84,6 +87,7 @@
     if (p.indexOf("/player") >= 0) return "data";
     if (p.indexOf("/health") >= 0) return "data";
     if (p.indexOf("/wiki") >= 0) return "wiki";
+    if (p.indexOf("/timeline") >= 0) return "timeline";
     if (p.indexOf("/blog") >= 0) return "blog";
     if (p.indexOf("/verify") >= 0) return "verify";
     if (p.indexOf("/login") >= 0) return "login";

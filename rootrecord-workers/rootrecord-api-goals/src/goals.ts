@@ -15,7 +15,7 @@ import {
   type GoalsAiEnv,
 } from "./goals-ai";
 import { activeGoalCount, canPostPublicGoals, loadMemberFlags } from "./goals-limits";
-import { emailFromUserId } from "./goal-constants";
+import { emailFromUserId, isServerGoalUser, SERVER_GOAL_EMAIL } from "./goal-constants";
 import { ensureProfile } from "./profiles";
 import {
   fundingPublicFields,
@@ -75,6 +75,19 @@ function estimateTargetDate(minDays: number | null, maxDays: number | null): str
   return d.toISOString().slice(0, 10);
 }
 
+function clampPercent(v: unknown, fallback = 0): number {
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(100, n));
+}
+
+function parseTargetDate(v: unknown): string | null {
+  const raw = str(v);
+  if (!raw) return null;
+  const m = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1]! : null;
+}
+
 /** Creators may raise a published target, never lower or clear it. */
 export function raisedOrSameTargetCents(
   current: unknown,
@@ -123,6 +136,7 @@ function goalPayload(row: Record<string, unknown>, env: GoalsEnv = {} as GoalsEn
     purpose: row.purpose,
     requires_money: Boolean(row.requires_money),
     estimated_cost_cents: row.estimated_cost_cents,
+    percent_complete: clampPercent(row.percent_complete, 0),
     user_steps_summary: row.user_steps_summary,
     min_days: row.min_days,
     max_days: row.max_days,
@@ -296,6 +310,14 @@ async function createGoalFromDraft(
   if (wantPublic && !(await canPostPublicGoals(env.DB, userId))) {
     throw new Error("Only Root Record members can post public goals.");
   }
+  const costCents = num(draft.estimated_cost_cents);
+  const requiresMoney =
+    draft.requires_money != null
+      ? bool01(draft.requires_money) === 1
+      : costCents != null && costCents > 0;
+  const targetDate =
+    parseTargetDate(draft.target_date_est) ?? estimateTargetDate(minDays, maxDays);
+  const percentComplete = clampPercent(draft.percent_complete, 0);
   const { image_base64: _b64, image: _img, image_content_type: _ct, ...draftRest } = draft;
   const userInput = { ...draftRest, captured_at: now };
   const preRow = {
@@ -303,22 +325,23 @@ async function createGoalFromDraft(
     user_input_json: JSON.stringify(userInput),
     title,
     purpose: str(draft.purpose),
-    requires_money: bool01(draft.requires_money),
-    estimated_cost_cents: num(draft.estimated_cost_cents),
+    requires_money: requiresMoney ? 1 : 0,
+    estimated_cost_cents: requiresMoney ? costCents : null,
+    percent_complete: percentComplete,
     user_steps_summary: str(draft.user_steps_summary),
     min_days: minDays,
     max_days: maxDays,
-    target_date_est: estimateTargetDate(minDays, maxDays),
+    target_date_est: targetDate,
     ai_response_json: null,
   };
 
   await env.DB.prepare(
     `INSERT INTO rg_goals (
       id, user_id, slug, title, category_id, purpose, requires_money, estimated_cost_cents,
-      user_steps_summary, min_days, max_days, target_date_est, user_input_json,
+      percent_complete, user_steps_summary, min_days, max_days, target_date_est, user_input_json,
       ai_summary_text, ai_plan_json, ai_model, ai_prompt_json, ai_response_json, ai_generated_at,
       public_enabled, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', NULL, '{}', '{}', NULL, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '{}', NULL, '{}', '{}', NULL, ?, ?, ?)`,
   )
     .bind(
       id,
@@ -327,12 +350,13 @@ async function createGoalFromDraft(
       title,
       str(draft.category_id) || null,
       str(draft.purpose),
-      wantPublic || bool01(draft.requires_money) ? 1 : 0,
-      num(draft.estimated_cost_cents),
+      requiresMoney ? 1 : 0,
+      requiresMoney ? costCents : null,
+      percentComplete,
       str(draft.user_steps_summary),
       minDays,
       maxDays,
-      estimateTargetDate(minDays, maxDays),
+      targetDate,
       JSON.stringify(userInput),
       wantPublic ? 1 : 0,
       now,
@@ -344,7 +368,7 @@ async function createGoalFromDraft(
   if (tokenSymbol) {
     await env.DB.prepare(`UPDATE rg_goals SET token_symbol = ? WHERE id = ?`).bind(tokenSymbol, id).run();
   }
-  const posterEmail = emailFromUserId(userId);
+  const posterEmail = isServerGoalUser(userId) ? SERVER_GOAL_EMAIL : emailFromUserId(userId);
   if (posterEmail) {
     await ensureProfile(env, posterEmail);
     await env.DB.prepare(`UPDATE rg_goals SET posted_by_email = ? WHERE id = ?`).bind(posterEmail, id).run();
@@ -494,10 +518,28 @@ export async function handleGoalById(
       if (!raised.ok) return json({ detail: raised.detail }, 400);
       nextCost = raised.cents;
     }
+    const nextRequiresMoney =
+      body.requires_money != null ? bool01(body.requires_money) : row.requires_money;
+    if (!nextRequiresMoney) {
+      // Non-monetary goals do not keep a fundraising target.
+      nextCost = null;
+    }
+    let nextTargetDate = row.target_date_est;
+    if (Object.prototype.hasOwnProperty.call(body, "target_date_est")) {
+      nextTargetDate = parseTargetDate(body.target_date_est);
+    } else if (body.min_days != null || body.max_days != null) {
+      nextTargetDate = estimateTargetDate(
+        num(body.min_days ?? row.min_days),
+        num(body.max_days ?? row.max_days),
+      );
+    }
+    const nextPct = Object.prototype.hasOwnProperty.call(body, "percent_complete")
+      ? clampPercent(body.percent_complete, clampPercent(row.percent_complete, 0))
+      : clampPercent(row.percent_complete, 0);
     await env.DB.prepare(
       `UPDATE rg_goals SET
         title = ?, slug = ?, category_id = ?, purpose = ?, requires_money = ?,
-        estimated_cost_cents = ?, user_steps_summary = ?, min_days = ?, max_days = ?,
+        estimated_cost_cents = ?, percent_complete = ?, user_steps_summary = ?, min_days = ?, max_days = ?,
         target_date_est = ?, public_enabled = ?, token_symbol = ?, updated_at = ?
        WHERE id = ? AND user_id = ?`,
     )
@@ -506,15 +548,13 @@ export async function handleGoalById(
         slug,
         body.category_id != null ? str(body.category_id) || null : row.category_id,
         body.purpose != null ? str(body.purpose) : row.purpose,
-        body.requires_money != null ? bool01(body.requires_money) : row.requires_money,
+        nextRequiresMoney,
         nextCost,
+        nextPct,
         body.user_steps_summary != null ? str(body.user_steps_summary) : row.user_steps_summary,
         body.min_days != null ? num(body.min_days) : row.min_days,
         body.max_days != null ? num(body.max_days) : row.max_days,
-        estimateTargetDate(
-          num(body.min_days ?? row.min_days),
-          num(body.max_days ?? row.max_days),
-        ),
+        nextTargetDate,
         body.public_enabled != null ? bool01(body.public_enabled) : row.public_enabled,
         body.token_symbol != null
           ? str(body.token_symbol).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || row.token_symbol

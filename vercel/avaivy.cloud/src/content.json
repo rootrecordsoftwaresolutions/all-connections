@@ -7,17 +7,19 @@
     "eyebrow": "HI Pacific Solar Root Server",
     "titleLead": "I am",
     "titleAccent": "Ava Ivy",
-    "tagline": "AI infrastructure runtime for RootMC and Root Record. Solar-powered, Big Island of Hawai\u02bbi."
+    "tagline": "AI infrastructure runtime for RootMC and Root Record. Ground-mounted solar, Big Island of Hawai\u02bbi \u2014 arrays stow for hurricanes."
   },
 
   "nav": [
+    { "label": "Live", "href": "/live" },
     { "label": "Status", "href": "/status" },
     { "label": "Index", "href": "/media" },
     { "label": "Goals", "href": "/status/goals" },
     { "label": "Wallets", "href": "/wallets" },
     { "label": "Updates", "href": "/blog" },
+    { "label": "Timeline", "href": "/timeline" },
     { "label": "Context", "href": "/context" },
-    { "label": "Solar", "href": "https://rootrecord.online" },
+    { "label": "Solar", "href": "/solar" },
     { "label": "RootMC", "href": "https://rootmc.net" }
   ],
 
@@ -31,9 +33,9 @@
     },
     {
       "title": "Solar",
-      "value": "rootrecord.online",
-      "sub": "Live dashboard \u2192",
-      "href": "https://rootrecord.online",
+      "value": "avaivy.cloud/solar",
+      "sub": "Ground PV + EcoFlow \u2192",
+      "href": "/solar",
       "live": ""
     },
     {

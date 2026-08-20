@@ -4,8 +4,15 @@ compatibility_date = "2024-11-01"
 account_id = "f3372b30093435bacc35b69972abeb2e"
 workers_dev = true
 
-# Apex is Cloudflare Pages (rootmc-web). Do not re-attach custom domains here
-# until site-origin is current — Worker 100:: records block Pages CNAMEs.
+# Apex custom domain on Pages is still pending (CNAME exists, verification lags).
+# Route HTML through this Worker so rootmc.net serves current Pages production.
+[[routes]]
+pattern = "rootmc.net/*"
+zone_name = "rootmc.net"
+
+[[routes]]
+pattern = "www.rootmc.net/*"
+zone_name = "rootmc.net"
 
 [[kv_namespaces]]
 binding = "SITE_CACHE"

@@ -123,6 +123,9 @@ export function fundingPublicFields(
     is_server_goal: Boolean(row.is_server_goal),
     raised_cents: Number(row.raised_cents || 0) || 0,
     estimated_cost_cents: row.estimated_cost_cents == null ? null : Number(row.estimated_cost_cents),
+    percent_complete: Math.max(0, Math.min(100, Math.floor(Number(row.percent_complete) || 0))),
+    requires_money: Boolean(row.requires_money),
+    target_date_est: row.target_date_est || null,
     funding_status: str(row.funding_status) || "open",
     tokens_minted: Math.max(0, Math.floor(Number(row.tokens_minted) || 0)),
     token_cluster: str(row.token_cluster) || clusterPublicFields(env).solana_cluster,
@@ -267,9 +270,9 @@ export async function provisionGoalFunding(
   const now = new Date().toISOString();
   const server = isServerGoalUser(userId) ? 1 : 0;
   await env.DB.prepare(
-    `UPDATE rg_goals SET public_enabled = 1, is_server_goal = ?, requires_money = 1, updated_at = ? WHERE id = ?`,
+    `UPDATE rg_goals SET public_enabled = 1, is_server_goal = ?, requires_money = 1, updated_at = ?, posted_by_email = CASE WHEN ? = 1 THEN ? ELSE posted_by_email END WHERE id = ?`,
   )
-    .bind(server, now, goalId)
+    .bind(server, now, server, SERVER_GOAL_EMAIL, goalId)
     .run();
 
   const wallet = await ensureDonateWallet(env, { ...row, is_server_goal: server });
@@ -404,8 +407,8 @@ export async function handlePublicGoalCatalog(
   const binds = kind === "server" ? [`user:${SERVER_GOAL_EMAIL}`] : [];
   const rows = await env.DB.prepare(
     `SELECT id, slug, title, purpose, image_url, token_mint, token_symbol, token_status, donate_wallet_pubkey,
-            stripe_payment_link, is_server_goal, raised_cents, estimated_cost_cents, target_date_est, updated_at, created_at,
-            user_id, posted_by_email, funding_status, tokens_minted, token_cluster
+            stripe_payment_link, is_server_goal, raised_cents, estimated_cost_cents, percent_complete, requires_money,
+            target_date_est, updated_at, created_at, user_id, posted_by_email, funding_status, tokens_minted, token_cluster
      FROM rg_goals WHERE ${where} ORDER BY is_server_goal DESC, updated_at DESC LIMIT 80`,
   )
     .bind(...binds)

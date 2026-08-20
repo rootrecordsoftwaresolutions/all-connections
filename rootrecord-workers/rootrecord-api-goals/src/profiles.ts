@@ -162,9 +162,9 @@ export async function ensureProfile(env: ProfileEnv, emailRaw: string): Promise<
     return existing;
   }
 
-  const isOp = email === SERVER_GOAL_EMAIL;
-  const display = isOp ? "Ava" : mc?.username || email.split("@")[0] || "Member";
-  const slug = await uniqueSlug(env.DB, isOp ? "ava" : display, email);
+  const isAva = email === SERVER_GOAL_EMAIL;
+  const display = isAva ? "Ava" : mc?.username || email.split("@")[0] || "Member";
+  const slug = await uniqueSlug(env.DB, isAva ? "ava" : display, email);
   await env.DB.prepare(
     `INSERT INTO rg_profiles (email, slug, display_name, bio, avatar_kind, minecraft_uuid, minecraft_username, created_at, updated_at)
      VALUES (?, ?, ?, ?, 'auto', ?, ?, ?, ?)`,
@@ -173,7 +173,7 @@ export async function ensureProfile(env: ProfileEnv, emailRaw: string): Promise<
       email,
       slug,
       display.slice(0, 40),
-      isOp ? "Root Record operator. Public server goals live here." : null,
+      isAva ? "Ava Ivy — public Root Record server goals live here." : null,
       mc?.uuid || null,
       mc?.username || null,
       now,
@@ -207,7 +207,11 @@ export async function postersForRows(env: ProfileEnv, rows: Record<string, unkno
   const emails = [
     ...new Set(
       rows
-        .map((r) => str(r.posted_by_email) || (r.is_server_goal ? SERVER_GOAL_EMAIL : emailFromUserId(String(r.user_id || ""))))
+        .map((r) =>
+          Boolean(r.is_server_goal)
+            ? SERVER_GOAL_EMAIL
+            : str(r.posted_by_email) || emailFromUserId(String(r.user_id || "")),
+        )
         .map((e) => e.toLowerCase())
         .filter(Boolean),
     ),
@@ -220,9 +224,9 @@ export async function postersForRows(env: ProfileEnv, rows: Record<string, unkno
 }
 
 export function posterEmailForRow(row: Record<string, unknown>): string {
+  if (Boolean(row.is_server_goal)) return SERVER_GOAL_EMAIL;
   return (
-    str(row.posted_by_email) ||
-    (row.is_server_goal ? SERVER_GOAL_EMAIL : emailFromUserId(String(row.user_id || "")))
+    str(row.posted_by_email) || emailFromUserId(String(row.user_id || ""))
   ).toLowerCase();
 }
 

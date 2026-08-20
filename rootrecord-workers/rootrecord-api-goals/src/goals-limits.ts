@@ -1,5 +1,5 @@
 import { readUserAccountAccessFlags } from "./accounts";
-import { isServerGoalUser } from "./goal-constants";
+import { isAvaOperatorEmail, isServerGoalUser } from "./goal-constants";
 import { SERVER_GOAL_EMAIL } from "../../shared/ava-shards";
 
 export const FREE_MAX_GOALS = 3;
@@ -21,7 +21,7 @@ export async function loadMemberFlags(
   }
   const email = userId.slice("user:".length).trim().toLowerCase();
   if (!email) return { member: false, maxGoals: FREE_MAX_GOALS };
-  if (email === SERVER_GOAL_EMAIL) {
+  if (isAvaOperatorEmail(email) || email === SERVER_GOAL_EMAIL) {
     return { member: true, maxGoals: MEMBER_MAX_GOALS };
   }
   try {

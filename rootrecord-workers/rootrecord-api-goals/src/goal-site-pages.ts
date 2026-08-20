@@ -45,6 +45,12 @@ textarea { min-height:120px; }
 .preview { width:160px; height:160px; object-fit:cover; border-radius:12px; border:1px solid var(--border); }
 .empty { color:var(--muted); }
 .hint { font-size:12px; color:var(--muted); margin:0; }
+.moneyArticle { margin-top:22px; padding-top:18px; border-top:1px solid var(--border); max-width:62ch; }
+.moneyArticle h2 { font-size:18px; letter-spacing:-.03em; margin:0 0 10px; }
+.moneyArticle h3 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); margin:18px 0 8px; }
+.moneyArticle p, .moneyArticle li { color:var(--muted); font-size:13px; line-height:1.55; margin:0 0 10px; }
+.moneyArticle ul { margin:0 0 12px; padding-left:1.15rem; }
+.moneyArticle .legal { font-size:12px; color:#9ca3af; background:#0a0e14; border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
 .posterBy { display:flex; align-items:center; gap:8px; margin-top:10px; color:var(--muted); font-size:12px; }
 .avatar { width:22px; height:22px; border-radius:99px; object-fit:cover; background:#111827; flex-shrink:0; }
 .avatarLg { width:72px; height:72px; border-radius:99px; object-fit:cover; background:#111827; border:1px solid var(--border); }
@@ -118,6 +124,27 @@ function posterBy(p) {
     ? '<a href="/u/' + esc(p.slug) + '">Posted by ' + esc(p.display_name) + "</a>"
     : "<span>Posted by " + esc(p.display_name) + "</span>";
   return '<div class="posterBy">' + av + name + "</div>";
+}
+function moneyProcessArticle(g) {
+  const symbol = esc(g.token_symbol || "GOAL");
+  const cluster = esc(g.solana_cluster || g.token_cluster || "devnet");
+  return '<article class="moneyArticle">' +
+    '<h2>How monetary goals work</h2>' +
+    '<p class="legal"><strong>Legal disclaimer.</strong> Contributions to Root Goals are voluntary support for a stated project target. They are not an investment contract, equity, debt, security, profit share, or guarantee of any return. Goal tokens track funding progress for that isolated goal only and have no promised cash value. Root Record may change fees, networks, or tooling. Crypto transfers are irreversible once confirmed. Card payments are processed by Stripe; Root Record never stores full card numbers. Do not contribute funds you cannot afford to lose. Nothing here is legal, tax, or financial advice — check local law before donating or holding tokens.</p>' +
+    '<h3>Isolated wallet</h3>' +
+    '<p>Each monetary goal gets its own custodial Solana address. Deposits for this goal stay on that address until the creator withdraws after the target is met, or refunds close the goal. Ava server goals are posted by Ava’s own Root Record account; community goals stay under the member who posted them.</p>' +
+    '<h3>What counts as raised</h3>' +
+    '<p>The meter uses landed value after platform fees: <strong>5%</strong> on card donations (Stripe’s processing fee is additional) and <strong>2.5%</strong> on SOL / USDC transfers. Hosted Root-wallet sends and Ava Shards follow the same goal ledger rules. ATA rent and network fees can reduce what remains for refunds.</p>' +
+    '<h3>Goal tokens (' + symbol + ')</h3>' +
+    '<ul>' +
+      '<li>100 goal tokens equal 100% of the USD target for this goal.</li>' +
+      '<li>A $1 landed deposit on a $100 goal mints about 1 token after ATA rent; overfunding still mints past 100%.</li>' +
+      '<li>Tokens mint to the contributor’s Root wallet on Solana <strong>' + cluster + '</strong> (mainnet when the treasury has ≥ 0.01 SOL, otherwise devnet).</li>' +
+      '<li>Token status starts pending until the first successful mint path is ready.</li>' +
+    '</ul>' +
+    '<h3>Withdrawals &amp; cancel</h3>' +
+    '<p>Creators cannot withdraw until the target is met. Canceling refunds what remains after ATA rent and transaction fees. New deposits after a withdraw can still mint tokens. Always verify the QR / address on this page before sending crypto.</p>' +
+  '</article>';
 }
 async function api(path, init = {}) {
   const headers = new Headers(init.headers || {});
@@ -298,6 +325,7 @@ function html(title: string, body: string, extraScript = ""): Response {
         <a href="/gallery">Gallery</a>
         <a href="/goals/new">Post a goal</a>
         <a href="/memberships">Memberships</a>
+        <a href="https://rootrecord.online/blog">Blog</a>
         <a href="/login" id="authNav">Sign in</a>
       </nav>
     </div></header>
@@ -398,18 +426,25 @@ function catalogPage(): Response {
 function card(g) {
   const raised = Number(g.raised_cents || 0);
   const target = Number(g.estimated_cost_cents || 0);
-  const pct = target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : 0;
+  const money = g.requires_money !== false && target > 0;
+  const pct = money
+    ? Math.min(100, Math.round((raised / target) * 100))
+    : Math.max(0, Math.min(100, Math.floor(Number(g.percent_complete) || 0)));
   const img = g.image_url ? "style='background-image:url(" + JSON.stringify(g.image_url) + ")'" : "";
   const qr = g.donate_wallet ? "/public/g/" + encodeURIComponent(g.id) + "/qr.svg" : "";
+  const meta = money
+    ? (esc(usd(raised)) + (target ? " of " + esc(usd(target)) : ""))
+    : (pct + "% complete" + (g.target_date_est ? " · est " + esc(g.target_date_est) : ""));
   return '<a class="poster" href="/goals/' + esc(g.id) + '">' +
     '<div class="posterImg" ' + img + '></div>' +
     '<div class="posterBody">' +
     (qr ? '<img class="cardQr" alt="" src="' + esc(qr) + '"/>' : "") +
-    '<div class="kicker">' + (g.is_server_goal ? "Ava · server" : "Community") + '</div>' +
+    '<div class="kicker">' + (g.is_server_goal ? "Ava · server" : "Community") +
+      (money ? "" : " · non-monetary") + '</div>' +
     '<h3>' + esc(g.title) + '</h3>' +
     posterBy(g.posted_by) +
-    (target ? '<div class="meter"><span style="width:' + pct + '%"></span></div>' : "") +
-    '<div class="meta">' + esc(usd(raised)) + (target ? " of " + esc(usd(target)) : "") + '</div>' +
+    '<div class="meter"><span style="width:' + pct + '%"></span></div>' +
+    '<div class="meta">' + meta + '</div>' +
     '<div class="meta" data-live="' + esc(g.id) + '">On-chain…</div>' +
     '</div></a>';
 }
@@ -435,13 +470,25 @@ function newGoalPage(): Response {
     "Post a public goal — Root Record",
     `<section class="hero">
       <h1>Post a public goal</h1>
-      <p>Members create a public goal page with artwork, a USD target, a donate wallet, and a goal token. Funds withdraw only after the target is met. Ava posts official server goals from her lifetime membership.</p>
+      <p>Members create a public goal page with artwork. Choose a money goal (USD target + donate wallet) or a non-monetary goal (percent complete + estimated completion date).</p>
     </section>
     <form class="form" id="create">
       <label>Title <input name="title" required maxlength="80"/></label>
       <label>What this is for <textarea name="purpose" required></textarea></label>
-      <label>Target (USD, optional) <input name="cost" type="number" min="0" step="1" placeholder="2500"/></label>
-      <label>Token symbol (optional) <input name="symbol" maxlength="8" placeholder="AVAOPS"/></label>
+      <label>Goal type
+        <select name="goal_type" id="goalType">
+          <option value="money">Money — raise funds</option>
+          <option value="non_money">Non-monetary — track progress</option>
+        </select>
+      </label>
+      <div id="moneyFields">
+        <label>Target (USD, optional) <input name="cost" type="number" min="0" step="1" placeholder="2500"/></label>
+        <label>Token symbol (optional) <input name="symbol" maxlength="8" placeholder="AVAOPS"/></label>
+      </div>
+      <div id="progressFields">
+        <label>Percent complete <input name="percent" type="number" min="0" max="100" step="1" value="0"/></label>
+        <label>Estimated completion date <input name="target_date" type="date"/></label>
+      </div>
       <label>Goal image (token artwork) <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" required/></label>
       <p class="hint">Large photos are auto-cropped square and compressed for the token. GIFs become a still frame.</p>
       <img class="preview" id="preview" hidden alt=""/>
@@ -471,7 +518,15 @@ const info = document.getElementById("info");
 const go = document.getElementById("go");
 const preview = document.getElementById("preview");
 const gate = document.getElementById("memberGate");
+const goalType = document.getElementById("goalType");
+const moneyFields = document.getElementById("moneyFields");
 let image = "";
+function syncType() {
+  const money = goalType.value !== "non_money";
+  moneyFields.hidden = !money;
+}
+goalType.onchange = syncType;
+syncType();
 void (async () => {
   const me = await api("/api/profile");
   if (me.status === 401) { location.href = "/login?next=/goals/new"; return; }
@@ -508,6 +563,7 @@ document.getElementById("create").onsubmit = async (e) => {
   go.disabled = true;
   go.textContent = "Creating…";
   const fd = new FormData(e.target);
+  const money = String(fd.get("goal_type") || "money") !== "non_money";
   const cost = String(fd.get("cost") || "").trim();
   if (!image) {
     err.textContent = "Add a goal image first.";
@@ -517,18 +573,25 @@ document.getElementById("create").onsubmit = async (e) => {
     return;
   }
   try {
+    const body = {
+      title: fd.get("title"),
+      purpose: fd.get("purpose"),
+      public: true,
+      public_enabled: true,
+      requires_money: money,
+      percent_complete: Math.max(0, Math.min(100, Math.floor(Number(fd.get("percent") || 0)))),
+      target_date_est: String(fd.get("target_date") || "").trim() || null,
+      image_base64: image,
+    };
+    if (money) {
+      body.estimated_cost_cents = cost ? Math.round(Number(cost) * 100) : null;
+      body.token_symbol = String(fd.get("symbol") || "").trim().toUpperCase().slice(0, 8);
+    } else {
+      body.estimated_cost_cents = null;
+    }
     const res = await api("/api/goals", {
       method: "POST",
-      body: JSON.stringify({
-        title: fd.get("title"),
-        purpose: fd.get("purpose"),
-        estimated_cost_cents: cost ? Math.round(Number(cost) * 100) : null,
-        token_symbol: String(fd.get("symbol") || "").trim().toUpperCase().slice(0, 8),
-        public: true,
-        public_enabled: true,
-        requires_money: true,
-        image_base64: image,
-      }),
+      body: JSON.stringify(body),
     });
     if (res.status === 401) { location.href = "/login?next=/goals/new"; return; }
     if (res.status === 403) { location.href = "/memberships"; return; }
@@ -641,7 +704,10 @@ void (async () => {
   document.title = esc(g.title) + " — Root Goals";
   const raised = Number(g.raised_cents || 0);
   const target = Number(g.estimated_cost_cents || 0);
-  const pctRaw = target > 0 ? Math.round((raised / target) * 100) : 0;
+  const money = g.requires_money !== false && target > 0;
+  const pctRaw = money
+    ? Math.round((raised / target) * 100)
+    : Math.max(0, Math.min(100, Math.floor(Number(g.percent_complete) || 0)));
   const pct = Math.min(100, Math.max(0, pctRaw));
   const img = g.image_url ? "style='background-image:url(" + JSON.stringify(g.image_url) + ")'" : "";
   const wallet = g.donate_wallet || "";
@@ -658,21 +724,27 @@ void (async () => {
     if (solEl) solEl.textContent = Number(b.sol || 0).toFixed(4) + " SOL";
     if (usdcEl) usdcEl.textContent = Number(b.usdc || 0).toFixed(2) + " USDC";
   };
+  const progressMeta = money
+    ? (esc(usd(raised)) + ' raised' + (target ? ' of ' + esc(usd(target)) + ' (' + pctRaw + '%)' : '') +
+      (g.token_symbol ? ' · token ' + esc(g.token_symbol) : '') +
+      (g.tokens_minted ? ' · ' + Number(g.tokens_minted).toLocaleString() + ' minted' : ''))
+    : (pct + '% complete' + (g.target_date_est ? ' · est completion ' + esc(g.target_date_est) : '') +
+      (g.token_symbol ? ' · token ' + esc(g.token_symbol) : ''));
   el.innerHTML =
     '<div class="detail"><div>' +
-    '<div class="kicker">' + (g.is_server_goal ? "Ava · server goal" : "Community goal") + '</div>' +
+    '<div class="kicker">' + (g.is_server_goal ? "Ava · server goal" : "Community goal") +
+      (money ? "" : " · non-monetary") + '</div>' +
     '<h1 style="font-size:36px;letter-spacing:-.04em;margin:8px 0 12px">' + esc(g.title) + '</h1>' +
     posterBy(g.posted_by) +
     '<p id="editWrap" hidden style="margin:12px 0 0"><a class="btn btnGhost" href="/goals/' + esc(id) + '/edit">Edit goal</a></p>' +
     '<p style="color:var(--muted);margin:18px 0;white-space:pre-wrap">' + esc(g.purpose || "No write-up yet.") + '</p>' +
     '<div class="art" ' + img + '></div>' +
-    '<div class="meta" style="margin-top:16px">' + esc(usd(raised)) + ' raised' +
-      (target ? ' of ' + esc(usd(target)) + ' (' + pctRaw + '%)' : '') +
-      (g.token_symbol ? ' · token ' + esc(g.token_symbol) : '') +
-      (g.tokens_minted ? ' · ' + Number(g.tokens_minted).toLocaleString() + ' minted' : '') +
-    '</div>' +
-    (target > 0 ? '<div class="meter" style="margin-top:10px"><span style="width:' + pct + '%"></span></div>' : '') +
-    '<p class="hint">100 goal tokens = 100% of the target. A $1 landed deposit on a $100 goal mints 1 token after ATA rent. Over 100% still mints. Token is Solana <strong>devnet</strong> for now.</p>' +
+    '<div class="meta" style="margin-top:16px">' + progressMeta + '</div>' +
+    '<div class="meter" style="margin-top:10px"><span style="width:' + pct + '%"></span></div>' +
+    (money
+      ? '<p class="hint">100 goal tokens = 100% of the target. A $1 landed deposit on a $100 goal mints 1 token after ATA rent. Over 100% still mints. Token is Solana <strong>devnet</strong> for now.</p>' +
+        moneyProcessArticle(g)
+      : '<p class="hint">Non-monetary goal — progress is set by the creator (percent complete and estimated completion date). Donations are optional.</p>') +
     '</div><aside class="panel">' +
     '<h2>Live wallet <span class="meta">(Solana ' + esc(g.solana_cluster || g.token_cluster || "devnet") + ")</span></h2>" +
     '<div class="liveBal"><b id="liveSol">' + esc(Number(live.sol || 0).toFixed(4) + " SOL") + '</b>' +
@@ -1069,14 +1141,27 @@ function editGoalPage(id: string): Response {
     "Edit goal — Root Record",
     `<section class="hero">
       <h1>Edit goal</h1>
-      <p>Update the write-up, target, symbol, or token artwork. Donate wallet stays the same. You can raise the USD target, not lower it. The share token mints on first deposit (devnet).</p>
+      <p>Update the write-up, progress, completion date estimate, USD target, symbol, or token artwork. Donate wallet stays the same. For money goals you can raise the USD target, not lower it.</p>
     </section>
     <form class="form" id="edit">
       <label>Title <input name="title" required maxlength="80"/></label>
       <label>What this is for <textarea name="purpose" required></textarea></label>
-      <label>Target (USD) <input name="cost" type="number" min="0" step="1"/></label>
-      <p class="hint">You can raise the target after publish. You cannot lower it.</p>
-      <label>Token symbol (optional) <input name="symbol" maxlength="8"/></label>
+      <label>Goal type
+        <select name="goal_type" id="goalType">
+          <option value="money">Money — raise funds</option>
+          <option value="non_money">Non-monetary — track progress</option>
+        </select>
+      </label>
+      <div id="moneyFields">
+        <label>Target (USD) <input name="cost" type="number" min="0" step="1"/></label>
+        <p class="hint">You can raise the target after publish. You cannot lower it.</p>
+        <label>Token symbol (optional) <input name="symbol" maxlength="8"/></label>
+      </div>
+      <div id="progressFields">
+        <label>Percent complete <input name="percent" type="number" min="0" max="100" step="1" value="0"/></label>
+        <label>Estimated completion date <input name="target_date" type="date"/></label>
+        <p class="hint">Owners can update percent complete and the completion estimate anytime.</p>
+      </div>
       <label>Replace image (optional) <input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif"/></label>
       <img class="preview" id="preview" hidden alt=""/>
       <p class="ok" id="info" hidden></p>
@@ -1091,7 +1176,17 @@ const info = document.getElementById("info");
 const go = document.getElementById("go");
 const preview = document.getElementById("preview");
 const form = document.getElementById("edit");
+const goalType = document.getElementById("goalType");
+const moneyFields = document.getElementById("moneyFields");
+const progressFields = document.getElementById("progressFields");
 let image = "";
+function syncType() {
+  const money = goalType.value !== "non_money";
+  moneyFields.hidden = !money;
+  // Percent + date stay editable for both types (money goals can also track work %).
+  progressFields.hidden = false;
+}
+goalType.onchange = syncType;
 void (async () => {
   const mine = await api("/api/goals/" + encodeURIComponent(id));
   if (mine.status === 401) { location.href = "/login?next=/goals/" + encodeURIComponent(id) + "/edit"; return; }
@@ -1099,11 +1194,15 @@ void (async () => {
   const g = mine.json.goal || {};
   form.title.value = g.title || "";
   form.purpose.value = g.purpose || "";
+  goalType.value = g.requires_money === false ? "non_money" : "money";
   const minUsd = Math.max(0, Math.ceil(Number(g.estimated_cost_cents || 0) / 100));
   form.cost.min = String(minUsd);
   if (minUsd > 0) form.cost.value = String(minUsd);
   form.symbol.value = g.token_symbol || "";
+  form.percent.value = String(Math.max(0, Math.min(100, Math.floor(Number(g.percent_complete) || 0))));
+  form.target_date.value = String(g.target_date_est || "").slice(0, 10);
   if (g.image_url) { preview.src = g.image_url; preview.hidden = false; }
+  syncType();
 })();
 form.image.onchange = async (e) => {
   const f = e.target.files && e.target.files[0];
@@ -1123,10 +1222,11 @@ form.onsubmit = async (e) => {
   err.hidden = true;
   go.disabled = true;
   go.textContent = "Saving…";
+  const money = goalType.value !== "non_money";
   const cost = String(form.cost.value || "").trim();
   const nextCents = cost ? Math.round(Number(cost) * 100) : 0;
   const minCents = Math.max(0, Math.floor(Number(form.cost.min || 0) * 100));
-  if (cost && nextCents < minCents) {
+  if (money && cost && nextCents < minCents) {
     err.textContent = "Goal target can only be raised, not lowered.";
     err.hidden = false;
     go.disabled = false;
@@ -1137,10 +1237,17 @@ form.onsubmit = async (e) => {
     const body = {
       title: form.title.value,
       purpose: form.purpose.value,
-      estimated_cost_cents: cost ? nextCents : null,
-      token_symbol: String(form.symbol.value || "").trim().toUpperCase().slice(0, 8),
+      requires_money: money,
+      percent_complete: Math.max(0, Math.min(100, Math.floor(Number(form.percent.value || 0)))),
+      target_date_est: String(form.target_date.value || "").trim() || null,
       public_enabled: true,
     };
+    if (money) {
+      body.estimated_cost_cents = cost ? nextCents : null;
+      body.token_symbol = String(form.symbol.value || "").trim().toUpperCase().slice(0, 8);
+    } else {
+      body.estimated_cost_cents = null;
+    }
     if (image) body.image_base64 = image;
     const res = await api("/api/goals/" + encodeURIComponent(id), { method: "PATCH", body: JSON.stringify(body) });
     if (!res.ok) { err.textContent = String(res.json.detail || "Could not save."); err.hidden = false; return; }

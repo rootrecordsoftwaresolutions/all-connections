@@ -242,8 +242,10 @@ Python routes: `ava-origin-python/routes/status.py` and friends. Tunnel hostname
 | URL | What it does |
 |---|---|
 | `https://rootrecord.info/` | Root Record marketing / data-center story. |
+| `https://rootrecord.info/timeline` | Infrastructure evolution timeline (Jan–Aug 2026 backfill). |
 | `https://rootrecord.info/account` | Account / sign-in. |
 | `https://rootrecord.info/ava/` | Ava wiki hub (human atlas). |
+| `https://rootrecord.info/ava/timeline` | Same timeline, wiki chrome. |
 | `https://rootrecord.info/ava/status` | Canonical status/solar. |
 | `https://rootrecord.info/ava/status/connections` | Players · servers · app sessions. |
 | `https://rootrecord.info/ava/status/services` | Services panel. |

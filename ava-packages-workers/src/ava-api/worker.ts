@@ -11,6 +11,11 @@
 import { avaIsAwake } from "../shared/heartbeat";
 import { fetchFrontend, proxyToOrigin } from "../shared/proxy";
 import { statusJson, statusPage } from "../shared/statusPage";
+import {
+  pollAndStoreEcoflow,
+  readStoredEcoflow,
+  solarDeskFromStored,
+} from "../shared/ecoflow";
 import type { AvaEnv, ScheduledEvent } from "../shared/types";
 
 const ORIGIN = "https://ava-origin.rootmc.net";
@@ -39,20 +44,40 @@ export default {
       return statusPage(env);
     }
 
+    const origin = env.AVA_ORIGIN_URL || ORIGIN;
+
     if (path.startsWith("/ava/")) {
       return proxyToOrigin(request, {
-        originUrl: ORIGIN,
+        originUrl: origin,
         path: path.slice("/ava".length),
         offlineFallback: () => statusPage(env, { degraded: true }),
         timeoutMs: 8000,
       });
     }
 
+    if (path === "/solar" || path === "/solar/") {
+      return proxyToOrigin(request, {
+        originUrl: origin,
+        timeoutMs: 8000,
+        offlineFallback: () => fetchFrontend(request, VERCEL_FRONTEND),
+      });
+    }
+
     if (isOriginApi(path)) {
       return proxyToOrigin(request, {
-        originUrl: ORIGIN,
-        offlineFallback: () => statusPage(env, { degraded: true }),
+        originUrl: origin,
         timeoutMs: 8000,
+        offlineFallback: async () => {
+          if (path.startsWith("/api/obs/solar-desk") || path.startsWith("/api/obs/solar")) {
+            const stored = await readStoredEcoflow(env);
+            if (!stored && env.AVA_ECOFLOW_ACCESS_KEY) {
+              const fresh = await pollAndStoreEcoflow(env);
+              return solarDeskFromStored(fresh);
+            }
+            return solarDeskFromStored(stored);
+          }
+          return statusPage(env, { degraded: true });
+        },
       });
     }
 
@@ -61,5 +86,6 @@ export default {
 
   async scheduled(_event: ScheduledEvent, env: AvaEnv): Promise<void> {
     if (await avaIsAwake(env)) return;
+    await pollAndStoreEcoflow(env);
   },
 };
