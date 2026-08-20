@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Updates — RootMC</title>
+  <meta name="description" content="Minecraft updates from RootMC — patches, economy, claims. Ava still talks when you ping her.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <meta name="theme-color" content="#0a0e14">
+  <link rel="canonical" href="https://rootmc.net/blog/">
+  <link rel="stylesheet" href="/styles/rootmc.css?v=20260819ivy">
+</head>
+<body>
+  <header class="rmc-header">
+    <div class="container rmc-header-inner">
+      <a class="rmc-brand" href="/">
+        <span class="rmc-brand-mark" aria-hidden="true">◈</span>
+        RootMC
+        <span class="rmc-brand-tag">Network</span>
+      </a>
+      <nav class="rmc-nav" aria-label="Main" data-site-nav="player"></nav>
+      <button class="rmc-nav-toggle" type="button" aria-label="Open menu" data-nav-toggle>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="container rmc-section">
+    <p class="wiki-breadcrumb"><a href="/">Home</a> · Updates</p>
+    <p class="market-badge">Minecraft blog</p>
+    <h1 class="wiki-page-title">RootMC <em>Updates</em></h1>
+    <p class="rmc-lead" style="margin:0 0 1.5rem;max-width:48rem;">Patches, economy, claims, votes. Real-world product notes live on <a href="https://rootrecord.online/blog">rootrecord.online/blog</a>. Ava platform notes on <a href="https://avaivy.cloud/blog">avaivy.cloud/blog</a>.</p>
+
+    <article class="wiki-hub-card" style="margin-bottom:1rem">
+      <span class="wiki-badge wiki-badge-server">2026-08-19</span>
+      <h2 style="margin:.65rem 0 0;font-family:var(--rmc-font-display);font-size:1.35rem;">Discord stays quiet except morning boot</h2>
+      <p class="rmc-muted">Ava still answers when you ping her. Automated player Discord is just the morning boot report in #updates. Minecraft notes will land here as this blog fills out.</p>
+    </article>
+
+    <article class="wiki-hub-card">
+      <span class="wiki-badge wiki-badge-server">Talk</span>
+      <h2 style="margin:.65rem 0 .5rem;font-family:var(--rmc-font-display);font-size:1.35rem;">Talk to Ava</h2>
+      <p class="rmc-muted" style="margin-bottom:1rem">Panel's open. Canned answers are free. Type a live message and she'll ask you to log in.</p>
+      <div id="ava-chat" class="rmc-card" style="padding:0;overflow:hidden">
+        <div id="ava-chat-log" style="min-height:160px;padding:1rem;display:flex;flex-direction:column;gap:.75rem"></div>
+        <div id="ava-chat-chips" style="display:flex;flex-wrap:wrap;gap:.5rem;padding:0 1rem 1rem"></div>
+        <div style="display:flex;border-top:1px solid rgba(255,255,255,.08)">
+          <input id="ava-chat-input" type="text" placeholder="Ask Ava something…" style="flex:1;background:transparent;border:none;padding:.9rem 1rem;color:inherit;font:inherit">
+          <button id="ava-chat-send" class="rmc-btn rmc-btn-primary" type="button" style="border-radius:0">Send</button>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <script src="/scripts/site-nav.js?v=20260819blog" defer></script>
+  <script>
+    (function () {
+      var LOGIN = "The chat is here — log in to talk with me. Free accounts: 1 live use per IP, unlimited canned answers, 3 resources. → /login/";
+      var chips = [
+        { label: "How do I join?", reply: "play.rootmc.net — Java 26.3+. Wiki has the rest." },
+        { label: "What's Gold?", reply: "G is the closed-loop player currency. Dollars stay on Pro checkout." },
+        { label: "Votes / Pro", reply: "Pro steers votes and cosmetics — never pay-to-win combat. rootmc.net/pro/" }
+      ];
+      var log = document.getElementById("ava-chat-log");
+      var chipRow = document.getElementById("ava-chat-chips");
+      var input = document.getElementById("ava-chat-input");
+      function line(who, text) {
+        var p = document.createElement("p");
+        p.textContent = text;
+        p.style.margin = "0";
+        p.style.fontSize = "14px";
+        if (who === "you") { p.style.alignSelf = "flex-end"; p.style.opacity = ".85"; }
+        log.appendChild(p);
+        log.scrollTop = log.scrollHeight;
+      }
+      line("ava", "Aloha — I'm Ava. Canned answers are free; type a live question and I'll ask you to log in.");
+      chips.forEach(function (c) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "rmc-btn rmc-btn-secondary";
+        b.textContent = c.label;
+        b.style.fontSize = "12px";
+        b.addEventListener("click", function () {
+          line("you", c.label);
+          line("ava", c.reply);
+        });
+        chipRow.appendChild(b);
+      });
+      function sendTyped() {
+        var t = (input.value || "").trim();
+        if (!t) return;
+        input.value = "";
+        line("you", t);
+        line("ava", LOGIN);
+      }
+      document.getElementById("ava-chat-send").addEventListener("click", sendTyped);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") sendTyped();
+      });
+    })();
+  </script>
+</body>
+</html>
